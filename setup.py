@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='eru-py',
-    version='0.0.4',
+    version='0.0.5',
     author='tonic',
     zip_safe=False,
     author_email='tonic@wolege.ca',
@@ -12,5 +12,6 @@ setup(
     include_package_data=True,
     install_requires=[
         'requests>=2.7.0',
+        'websocket-client>=0.30.0',
     ],
 )
