@@ -6,6 +6,9 @@ import urllib
 import urlparse
 from urlparse import urljoin
 
+class EruException(Exception):
+    pass
+
 class EruClient(object):
 
     def __init__(self, url, timeout=5, username='', password=''):
@@ -155,16 +158,45 @@ class EruClient(object):
         url = '/api/app/{0}/{1}'.format(name, version)
         return self.get(url)
 
-    def list_app_containers(self, name):
+    def list_app_containers(self, name, start=0, limit=20):
         """List all containers of this app.
         
         :param name: the name of app.
         """
         url = '/api/app/{0}/containers/'.format(name)
-        return self.get(url)
+        params = {'start': start, 'limit': limit}
+        return self.get(url, params=params)
+
+    def list_app_tasks(self, name, start=0, limit=20):
+        """List all containers of this app.
+        
+        :param name: the name of app.
+        """
+        url = '/api/app/{0}/tasks/'.format(name)
+        params = {'start': start, 'limit': limit}
+        return self.get(url, params=params)
+
+    def list_version_tasks(self, name, version, start=0, limit=20):
+        """List all containers of this app.
+        
+        :param name: the name of app.
+        """
+        url = '/api/app/{0}/{1}/tasks/'.format(name, version)
+        params = {'start': start, 'limit': limit}
+        return self.get(url, params=params)
+
+    def list_version_containers(self, name, version, start=0, limit=20):
+        """List all containers of this app.
+        
+        :param name: the name of app.
+        """
+        url = '/api/app/{0}/{1}/containers/'.format(name, version)
+        params = {'start': start, 'limit': limit}
+        return self.get(url, params=params)
 
     def deploy_private(self, group_name, pod_name, app_name, ncore,
-            ncontainer, version, entrypoint, env, network_ids, host_name=None):
+            ncontainer, version, entrypoint, env, network_ids, host_name=None,
+            raw=False, image=''):
         """Deploy app on pod, using cores that are private.
         
         e.g.::
@@ -186,6 +218,9 @@ class EruClient(object):
         :type network_ids: ``list``
         :param host_name: if specified, containers will be only deployed to this host.
         """
+        if not (raw and image):
+            raise EruException('raw and image must be set together.')
+
         url = '/api/deploy/private/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
         data = {
             'ncore': ncore,
@@ -195,13 +230,19 @@ class EruClient(object):
             'env': env,
             'networks': network_ids,
         }
+        if raw and image:
+            data['raw'] = True
+            data['image'] = image
         if host_name:
             data['hostname'] = host_name
         return self.post(url, data=data)
 
     def deploy_public(self, group_name, pod_name, app_name, ncontainer,
-            version, entrypoint, env, network_ids):
+            version, entrypoint, env, network_ids, raw=False, image=''):
         """Deploy app on pod, can't bind any cores to container."""
+        if not (raw and image):
+            raise EruException('raw and image must be set together.')
+
         url = '/api/deploy/public/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
         data = {
             'ncontainer': ncontainer,
@@ -210,6 +251,9 @@ class EruClient(object):
             'env': env,
             'networks': network_ids,
         }
+        if raw and image:
+            data['raw'] = True
+            data['image'] = image
         return self.post(url, data=data)
 
     def build_image(self, group_name, pod_name, app_name, base, version):
