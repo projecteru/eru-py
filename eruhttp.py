@@ -77,7 +77,7 @@ class EruClient(object):
     def delete(self, url, params=None, data=None, as_json=True):
         return self.request(url, 'DELETE', params=params, data=data, as_json=as_json)
 
-    def register_app_version(self, name, version, git, token, appyaml):
+    def register_app_version(self, name, version, git, token, appyaml, raw=False):
         """Register an app into ERU.
 
         :param name: the name of app.
@@ -95,6 +95,8 @@ class EruClient(object):
             'token': token,
             'appyaml': appyaml,
         }
+        if raw:
+            data['raw'] = True
         return self.post(url, data=data)
 
     def set_app_env(self, name, env, **kwargs):
