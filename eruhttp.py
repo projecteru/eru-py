@@ -220,7 +220,7 @@ class EruClient(object):
         :type network_ids: ``list``
         :param host_name: if specified, containers will be only deployed to this host.
         """
-        if not (raw and image):
+        if raw and not image:
             raise EruException('raw and image must be set together.')
 
         url = '/api/deploy/private/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
@@ -242,7 +242,7 @@ class EruClient(object):
     def deploy_public(self, group_name, pod_name, app_name, ncontainer,
             version, entrypoint, env, network_ids, raw=False, image=''):
         """Deploy app on pod, can't bind any cores to container."""
-        if not (raw and image):
+        if raw and not image:
             raise EruException('raw and image must be set together.')
 
         url = '/api/deploy/public/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
