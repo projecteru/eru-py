@@ -198,7 +198,7 @@ class EruClient(object):
 
     def deploy_private(self, group_name, pod_name, app_name, ncore,
             ncontainer, version, entrypoint, env, network_ids, host_name=None,
-            raw=False, image=''):
+            raw=False, image='', spec_ips=None):
         """Deploy app on pod, using cores that are private.
         
         e.g.::
@@ -237,10 +237,12 @@ class EruClient(object):
             data['image'] = image
         if host_name:
             data['hostname'] = host_name
+        if spec_ips:
+            data['spec_ips'] = spec_ips
         return self.post(url, data=data)
 
     def deploy_public(self, group_name, pod_name, app_name, ncontainer,
-            version, entrypoint, env, network_ids, raw=False, image=''):
+            version, entrypoint, env, network_ids, raw=False, image='', spec_ips=None):
         """Deploy app on pod, can't bind any cores to container."""
         if raw and not image:
             raise EruException('raw and image must be set together.')
@@ -256,6 +258,8 @@ class EruClient(object):
         if raw and image:
             data['raw'] = True
             data['image'] = image
+        if spec_ips:
+            data['spec_ips'] = spec_ips
         return self.post(url, data=data)
 
     def build_image(self, group_name, pod_name, app_name, base, version):
