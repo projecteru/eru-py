@@ -18,7 +18,7 @@ class EruClient(object):
         self.password = password
         self.session = requests.Session()
 
-    def request(self, url, method='GET', params=None, data=None, as_json=True):
+    def request(self, url, method='GET', params=None, data=None, expected_code=200):
         headers = {'content-type': 'application/json'}
         if params is None:
             params = {}
@@ -33,17 +33,16 @@ class EruClient(object):
             resp = self.session.request(
                 method=method, url=target_url, params=params,
                 data=json.dumps(data), timeout=self.timeout, headers=headers)
-            if as_json:
-                return resp.json()
-            return resp.content
+            r = resp.json()
+            if resp.status_code != expected_code:
+                raise EruException(r.get('error', 'Unknown error'))
+            return r
         except requests.exceptions.ReadTimeout:
-            if as_json:
-                return {'r': 1, 'msg': 'Read timeout'}
-            return 'Read timeout'
+            raise EruException('Read timeout')
         except requests.exceptions.ConnectionError:
-            if as_json:
-                return {'r': 1, 'msg': 'Connection refused'}
-            return 'Connection refused'
+            raise EruException('Connection refused')
+        except Exception as e:
+            raise EruException(e.message)
 
     def request_websocket(self, url, as_json=True, params=None):
         # .......
@@ -65,17 +64,17 @@ class EruClient(object):
             except (websocket.WebSocketException, socket.error):
                 break
 
-    def post(self, url, params=None, data=None, as_json=True):
-        return self.request(url, 'POST', params=params, data=data, as_json=as_json)
+    def post(self, url, params=None, data=None, expected_code=200):
+        return self.request(url, 'POST', params=params, data=data, expected_code=expected_code)
 
-    def put(self, url, params=None, data=None, as_json=True):
-        return self.request(url, 'PUT', params=params, data=data, as_json=as_json)
+    def put(self, url, params=None, data=None, expected_code=200):
+        return self.request(url, 'PUT', params=params, data=data, expected_code=expected_code)
 
-    def get(self, url, params=None, data=None, as_json=True):
-        return self.request(url, 'GET', params=params, data=data, as_json=as_json)
+    def get(self, url, params=None, data=None, expected_code=200):
+        return self.request(url, 'GET', params=params, data=data, expected_code=expected_code)
 
-    def delete(self, url, params=None, data=None, as_json=True):
-        return self.request(url, 'DELETE', params=params, data=data, as_json=as_json)
+    def delete(self, url, params=None, data=None, expected_code=200):
+        return self.request(url, 'DELETE', params=params, data=data, expected_code=expected_code)
 
     def register_app_version(self, name, version, git, token, appyaml, raw=False):
         """Register an app into ERU.
@@ -140,7 +139,7 @@ class EruClient(object):
         
         :param name: the name of app.
         """
-        url = '/api/app/{0}/listenv'.format(name)
+        url = '/api/app/{0}/listenv/'.format(name)
         return self.get(url)
 
     def get_app(self, name):
@@ -148,7 +147,7 @@ class EruClient(object):
         
         :param name: the name of app.
         """
-        url = '/api/app/{0}'.format(name)
+        url = '/api/app/{0}/'.format(name)
         return self.get(url)
 
     def get_version(self, name, version):
@@ -157,7 +156,7 @@ class EruClient(object):
         :param name: the name of app.
         :param version: specific version of app, from git revision.
         """
-        url = '/api/app/{0}/{1}'.format(name, version)
+        url = '/api/app/{0}/{1}/'.format(name, version)
         return self.get(url)
 
     def list_app_containers(self, name, start=0, limit=20):
@@ -360,7 +359,7 @@ class EruClient(object):
             'name': name,
             'description': description,
         }
-        return self.post(url, data=data)
+        return self.post(url, data=data, expected_code=201)
 
     def create_pod(self, name, description):
         """Create pod"""
@@ -369,7 +368,7 @@ class EruClient(object):
             'name': name,
             'description': description,
         }
-        return self.post(url, data=data)
+        return self.post(url, data=data, expected_code=201)
 
     def assign_pod_to_group(self, pod_name, group_name):
         """Assign a pod to group, the user in group now has access right to pod"""
@@ -392,7 +391,7 @@ class EruClient(object):
             'addr': addr,
             'pod_name': pod_name,
         }
-        return self.post(url, data=data)
+        return self.post(url, data=data, expected_code=201)
 
     def assign_host_to_group(self, addr, group_name):
         """Assign host to group, host will be private,
