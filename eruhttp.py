@@ -196,8 +196,8 @@ class EruClient(object):
         return self.get(url, params=params)
 
     def deploy_private(self, group_name, pod_name, app_name, ncore,
-            ncontainer, version, entrypoint, env, network_ids, host_name=None,
-            raw=False, image='', spec_ips=None):
+            ncontainer, version, entrypoint, env, network_ids, ports=None,
+            host_name=None, raw=False, image='', spec_ips=None):
         """Deploy app on pod, using cores that are private.
         
         e.g.::
@@ -217,10 +217,15 @@ class EruClient(object):
         :param env: which env to set to container, once set, all key-value pairs under `env` will be passed to container.
         :param network_ids: ids of network to bind to container.
         :type network_ids: ``list``
+        :param ports: ports for container.
+        :type ports: ``list``
         :param host_name: if specified, containers will be only deployed to this host.
         """
         if raw and not image:
             raise EruException('raw and image must be set together.')
+
+        if ports is None:
+            ports = []
 
         url = '/api/deploy/private/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
         data = {
@@ -230,6 +235,7 @@ class EruClient(object):
             'entrypoint': entrypoint,
             'env': env,
             'networks': network_ids,
+            'ports': ports,
         }
         if raw and image:
             data['raw'] = True
@@ -241,10 +247,14 @@ class EruClient(object):
         return self.post(url, data=data)
 
     def deploy_public(self, group_name, pod_name, app_name, ncontainer,
-            version, entrypoint, env, network_ids, raw=False, image='', spec_ips=None):
+            version, entrypoint, env, network_ids, ports=None,
+            raw=False, image='', spec_ips=None):
         """Deploy app on pod, can't bind any cores to container."""
         if raw and not image:
             raise EruException('raw and image must be set together.')
+
+        if ports is None:
+            ports = []
 
         url = '/api/deploy/public/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
         data = {
@@ -253,6 +263,7 @@ class EruClient(object):
             'entrypoint': entrypoint,
             'env': env,
             'networks': network_ids,
+            'ports': ports,
         }
         if raw and image:
             data['raw'] = True
