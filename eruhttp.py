@@ -457,6 +457,11 @@ class EruClient(object):
         params = {'start': start, 'limit': limit}
         return self.get('/api/pod/list/', params=params)
 
+    def list_group_pods(self, group_name, start=0, limit=20):
+        params = {'start': start, 'limit': limit}
+        url = '/api/sys/group/{0}/pods/list/'.format(group_name)
+        return self.get(url, params=params)
+
     def list_pod_hosts(self, pod_name_or_id, start=0, limit=20, show_all=False):
         params = {'start': start, 'limit': limit}
         if show_all:
