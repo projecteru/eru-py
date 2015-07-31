@@ -445,6 +445,14 @@ class EruClient(object):
         url = '/api/network/list/'
         return self.get(url)
 
+    def bind_container_network(self, appname, container_id, network_names):
+        url = '/api/container/%s/bind_network' % container_id
+        data = {
+            'appname': appname,
+            'networks': network_names,
+        }
+        return self.put(url, data=data)
+
     def get_network(self, id_or_name):
         url = '/api/network/{0}/'.format(id_or_name)
         return self.get(url)
