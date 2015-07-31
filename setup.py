@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='eru-py',
-    version='0.0.13',
+    version='0.0.14',
     author='tonic',
     zip_safe=False,
     author_email='tonic@wolege.ca',
