@@ -76,7 +76,7 @@ class EruClient(object):
     def delete(self, url, params=None, data=None, expected_code=200):
         return self.request(url, 'DELETE', params=params, data=data, expected_code=expected_code)
 
-    def register_app_version(self, name, version, git, token, appyaml, raw=False):
+    def register_app_version(self, version, git, token, appyaml, raw=False):
         """Register an app into ERU.
 
         :param name: the name of app.
@@ -88,7 +88,6 @@ class EruClient(object):
         """
         url = '/api/app/register/'
         data = {
-            'name': name,
             'version': version,
             'git': git,
             'token': token,
@@ -149,6 +148,11 @@ class EruClient(object):
         """
         url = '/api/app/{0}/'.format(name)
         return self.get(url)
+
+    def list_apps(self, start=0, limit=20):
+        url = '/api/app/'
+        params = {'start': start, 'limit': limit}
+        return self.get(url, params=params)
 
     def get_version(self, name, version):
         """Get version by name and version.
