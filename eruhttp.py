@@ -181,6 +181,15 @@ class EruClient(object):
         params = {'start': start, 'limit': limit}
         return self.get(url, params=params)
 
+    def list_app_images(self, name, start=0, limit=20):
+        """List all containers of this app.
+        
+        :param name: the name of app.
+        """
+        url = '/api/app/{0}/images/'.format(name)
+        params = {'start': start, 'limit': limit}
+        return self.get(url, params=params)
+
     def list_version_tasks(self, name, version, start=0, limit=20):
         """List all containers of this app.
         
