@@ -503,6 +503,10 @@ class EruClient(object):
     def get_container(self, id_or_sha256):
         return self.get('/api/container/{0}/'.format(id_or_sha256))
 
+    def get_host(self, host_name):
+        """Get host info"""
+        return self.get('/api/host/{0}/'.format(host_name))
+
     def kill_host(self, host_name):
         """Kill a host, will be shown as down in Eru 
         and containers on this host will be shown as dead."""
