@@ -523,3 +523,6 @@ class EruClient(object):
 
     def get_task(self, task_id):
         return self.get('/api/task/{0}/'.format(task_id))
+
+    def get_task_log(self, task_id):
+        return self.get('/api/task/{0}/log/'.format(task_id))
