@@ -114,6 +114,11 @@ class EruClient(object):
         data.update(kwargs)
         return self.put(url, data=data)
 
+    def delete_app_env(self, name, env):
+        url = '/api/app/{0}/env/'.format(name)
+        data = {'env': env}
+        return self.delete(url, data=data)
+
     def list_app_env_content(self, name, env):
         """List all key-value pairs from app with specific environment.
         e.g.::
