@@ -7,7 +7,11 @@ import urlparse
 from urlparse import urljoin
 
 class EruException(Exception):
-    pass
+
+    def __init__(self, code, message):
+        self.code = code
+        self.message = message
+        super(EruException, self).__init__(message)
 
 class EruClient(object):
 
@@ -24,10 +28,9 @@ class EruClient(object):
             params = {}
         if data is None:
             data = {}
-        if 'start' not in params:
-            params['start'] = 0
-        if 'limit' not in params:
-            params['limit'] = 20
+        
+        params.setdefault('start', 0)
+        params.setdefault('limit', 20)
         target_url = urljoin(self.url, url)
         try:
             resp = self.session.request(
@@ -35,14 +38,14 @@ class EruClient(object):
                 data=json.dumps(data), timeout=self.timeout, headers=headers)
             r = resp.json()
             if resp.status_code != expected_code:
-                raise EruException(r.get('error', 'Unknown error'))
+                raise EruException(resp.status_code, r.get('error', 'Unknown error'))
             return r
         except requests.exceptions.ReadTimeout:
-            raise EruException('Read timeout')
+            raise EruException(0, 'Read timeout')
         except requests.exceptions.ConnectionError:
-            raise EruException('Connection refused')
+            raise EruException(0, 'Connection refused')
         except Exception as e:
-            raise EruException(e.message)
+            raise EruException(0, e.message)
 
     def request_websocket(self, url, as_json=True, params=None):
         # .......
@@ -213,7 +216,7 @@ class EruClient(object):
         params = {'start': start, 'limit': limit}
         return self.get(url, params=params)
 
-    def deploy_private(self, group_name, pod_name, app_name, ncore,
+    def deploy_private(self, pod_name, app_name, ncore,
             ncontainer, version, entrypoint, env, network_ids, ports=None,
             host_name=None, raw=False, image='', spec_ips=None, args=None,
             callback_url=''):
@@ -221,11 +224,10 @@ class EruClient(object):
         
         e.g.::
 
-            >>> eru_client.deploy_private('group', 'pod', 'appname', 1.4, \
+            >>> eru_client.deploy_private('pod', 'appname', 1.4, \
             ...     10, '3def4a6', 'web', 'prod', [1, 2])
             {'r': '0', 'msg': 'ok'}
 
-        :param group_name: group which current user belongs to.
         :param pod_name: target pod name which containers will be deployed.
         :param app_name: the name of app.
         :param ncore: how many cores one containers requires, like 1, 2, 1.4.
@@ -248,8 +250,10 @@ class EruClient(object):
         if args is None:
             args = []
 
-        url = '/api/deploy/private/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
+        url = '/api/deploy/private/'
         data = {
+            'podname': pod_name,
+            'appname': app_name,
             'ncore': ncore,
             'ncontainer': ncontainer,
             'version': version,
@@ -269,7 +273,7 @@ class EruClient(object):
             data['spec_ips'] = spec_ips
         return self.post(url, data=data)
 
-    def deploy_public(self, group_name, pod_name, app_name, ncontainer,
+    def deploy_public(self, pod_name, app_name, ncontainer,
             version, entrypoint, env, network_ids, ports=None,
             raw=False, image='', spec_ips=None, args=None, callback_url=''):
         """Deploy app on pod, can't bind any cores to container."""
@@ -281,8 +285,10 @@ class EruClient(object):
         if args is None:
             args = []
 
-        url = '/api/deploy/public/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
+        url = '/api/deploy/public/'
         data = {
+            'podname': pod_name,
+            'appname': app_name,
             'ncontainer': ncontainer,
             'version': version,
             'entrypoint': entrypoint,
@@ -299,23 +305,24 @@ class EruClient(object):
             data['spec_ips'] = spec_ips
         return self.post(url, data=data)
 
-    def build_image(self, group_name, pod_name, app_name, base, version):
+    def build_image(self, pod_name, app_name, base, version):
         """Build docker image for app.
 
         e.g.::
 
-            >>> eru_client.build_image('group', 'pod', 'appname', \
+            >>> eru_client.build_image('pod', 'appname', \
             ...     'docker-registry.intra.hunantv.com/nbeimage/ubuntu:python-2015.05.12', '3d4fe6a')
             {'r': 0, 'msg': 'ok', 'task': 10001, 'watch_key': 'eru:task:result:10001'}
         
-        :param group_name: group which current user belongs to.
         :param pod_name: target pod name which containers will be deployed.
         :param app_name: the name of app.
         :param base: which image to use as base, will be like `FROM base` in dockerfile.
         :param version: specific version of app.
         """
-        url = '/api/deploy/build/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
+        url = '/api/deploy/build/'
         data = {
+            'podname': pod_name,
+            'appname': app_name,
             'base': base,
             'version': version,
         }
@@ -342,10 +349,14 @@ class EruClient(object):
         }
         return self.request_websocket(url, as_json=False, params=params)
 
-    def offline_version(self, group_name, pod_name, app_name, version):
+    def offline_version(self, pod_name, app_name, version):
         """Offline specific version of app."""
-        url = '/api/deploy/rmversion/{0}/{1}/{2}'.format(group_name, pod_name, app_name)
-        data = {'version': version}
+        url = '/api/deploy/rmversion/'
+        data = {
+            'podname': pod_name,
+            'appname': app_name,
+            'version': version,
+        }
         return self.post(url, data=data)
 
     def remove_containers(self, container_ids):
@@ -360,22 +371,22 @@ class EruClient(object):
 
     def kill_container(self, container_id):
         """Kill a container, it will be shown as dead in ERU."""
-        url = '/api/container/{0}/kill'.format(container_id)
+        url = '/api/container/{0}/kill/'.format(container_id)
         return self.put(url)
 
     def cure_container(self, container_id):
         """Cure a container, it will be shown as alive in ERU."""
-        url = '/api/container/{0}/cure'.format(container_id)
+        url = '/api/container/{0}/cure/'.format(container_id)
         return self.put(url)
 
     def start_container(self, container_id):
         """Start a container."""
-        url = '/api/container/{0}/start'.format(container_id)
+        url = '/api/container/{0}/start/'.format(container_id)
         return self.put(url)
 
     def stop_container(self, container_id):
         """Stop a container."""
-        url = '/api/container/{0}/stop'.format(container_id)
+        url = '/api/container/{0}/stop/'.format(container_id)
         return self.put(url)
 
     def poll_container(self, container_id):
@@ -387,32 +398,17 @@ class EruClient(object):
             >>> eru_client.poll_container('b84fb25bd99b')
             {'r': 0, 'container': 'b84fb25bd99b752351faa52502f20ecc3de6e53a877704761de3a79efe21b2e2', 'status': 1}
         """
-        url = '/api/container/{0}/poll'.format(container_id)
+        url = '/api/container/{0}/poll/'.format(container_id)
         return self.get(url)
-
-    def create_group(self, name, description):
-        """Create group"""
-        url = '/api/sys/group/create'
-        data = {
-            'name': name,
-            'description': description,
-        }
-        return self.post(url, data=data, expected_code=201)
 
     def create_pod(self, name, description):
         """Create pod"""
-        url = '/api/sys/pod/create'
+        url = '/api/pod/create/'
         data = {
             'name': name,
             'description': description,
         }
         return self.post(url, data=data, expected_code=201)
-
-    def assign_pod_to_group(self, pod_name, group_name):
-        """Assign a pod to group, the user in group now has access right to pod"""
-        url = '/api/sys/pod/{0}/assign'.format(pod_name)
-        data = {'group_name': group_name}
-        return self.post(url, data=data)
 
     def create_host(self, addr, pod_name):
         """Create host.
@@ -424,33 +420,12 @@ class EruClient(object):
             {'r': 0, 'msg': 'ok'}
         
         """
-        url = '/api/sys/host/create'
+        url = '/api/host/create/'
         data = {
             'addr': addr,
-            'pod_name': pod_name,
+            'podname': pod_name,
         }
         return self.post(url, data=data, expected_code=201)
-
-    def assign_host_to_group(self, addr, group_name):
-        """Assign host to group, host will be private,
-        people not in group don't have access to host.
-        Don't forget port in `addr`.
-        
-        e.g.::
-
-            >>> eru_client.assign_host_to_group('10.1.201.92:2376', 'group')
-            {'r': 0, 'msg': 'ok'}
-        """
-        url = '/api/sys/host/{0}/assign'.format(addr)
-        data = {'group_name': group_name}
-        return self.post(url, data=data)
-
-    def get_group_max_priviate_containers(self, group_name, pod_name, ncore):
-        """How many containers can be deployed on pod from group,
-        if each container requires ncore cores, ncore can be like 1.5."""
-        url = '/api/sys/group/{0}/available_container_count'.format(group_name)
-        params = {'pod_name': pod_name, 'ncore': ncore}
-        return self.get(url, params=params)
 
     def create_network(self, name, netspace):
         """Create macvlan network, netspace is like `10.200.0.0/16`"""
@@ -485,16 +460,6 @@ class EruClient(object):
     def list_pods(self, start=0, limit=20):
         params = {'start': start, 'limit': limit}
         return self.get('/api/pod/list/', params=params)
-
-    def list_groups(self, start=0, limit=20):
-        params = {'start': start, 'limit': limit}
-        url = '/api/sys/group/list'
-        return self.get(url, params=params)
-
-    def list_group_pods(self, group_name, start=0, limit=20):
-        params = {'start': start, 'limit': limit}
-        url = '/api/sys/group/{0}/pods/list'.format(group_name)
-        return self.get(url, params=params)
 
     def list_pod_hosts(self, pod_name_or_id, start=0, limit=20, show_all=False):
         params = {'start': start, 'limit': limit}
