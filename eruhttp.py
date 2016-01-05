@@ -6,12 +6,19 @@ import urllib
 import urlparse
 from urlparse import urljoin
 
+
 class EruException(Exception):
 
     def __init__(self, code, message):
         self.code = code
         self.message = message
-        super(EruException, self).__init__(message)
+
+    def __str__(self):
+        return '<EruException code:%s message:%s>' % (self.code, self.message)
+
+    __repr__ = __str__
+    __unicode__ = __str__
+
 
 class EruClient(object):
 
@@ -98,7 +105,7 @@ class EruClient(object):
         }
         if raw:
             data['raw'] = True
-        return self.post(url, data=data)
+        return self.post(url, data=data, expected_code=201)
 
     def set_app_env(self, name, env, **kwargs):
         """Set environment key-value pair to app.
@@ -434,7 +441,7 @@ class EruClient(object):
             'name': name,
             'netspace': netspace,
         }
-        return self.post(url, data=data)
+        return self.post(url, data=data, expected_code=201)
 
     def list_network(self, start=0, limit=20):
         """List all available networks"""
