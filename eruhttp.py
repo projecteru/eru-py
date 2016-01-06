@@ -506,8 +506,8 @@ class EruClient(object):
 
     def add_eip(self, *eips):
         data = list(eips)
-        return self.post('/api/network/add_eip/', data=data)
+        return self.post('/api/network/add_eip/', data=data, expected_code=201)
 
     def delete_eip(self, *eips):
         data = list(eips)
-        return self.post('/api/network/delete_eip', data=data)
+        return self.post('/api/network/delete_eip/', data=data)
