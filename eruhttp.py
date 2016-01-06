@@ -503,3 +503,11 @@ class EruClient(object):
 
     def get_task_log(self, task_id):
         return self.get('/api/task/{0}/log/'.format(task_id))
+
+    def add_eip(self, *eips):
+        data = list(eips)
+        return self.post('/api/network/add_eip/', data=data)
+
+    def delete_eip(self, *eips):
+        data = list(eips)
+        return self.post('/api/network/delete_eip', data=data)
