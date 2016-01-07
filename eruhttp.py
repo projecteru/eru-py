@@ -511,3 +511,24 @@ class EruClient(object):
     def delete_eip(self, *eips):
         data = list(eips)
         return self.post('/api/network/delete_eip/', data=data)
+
+    def bind_host_eip(self, hostname):
+        url = '/api/host/{0}/eip/'.format(hostname)
+        return self.post(url)
+
+    def release_host_eip(self, hostname):
+        url = '/api/host/{0}/eip/'.format(hostname)
+        return self.delete(url)
+
+    def get_host_eip(self, hostname):
+        url = '/api/host/{0}/eip/'.format(hostname)
+        return self.get(url)
+
+    def bind_container_eip(self, container_id, eip):
+        url = '/api/container/{0}/bind_eip/'.format(container_id)
+        data = {'eip': eip}
+        return self.put(url, data=data)
+
+    def release_container_eip(self, container_id, eip):
+        url = '/api/container/{0}/release_eip/'.format(container_id)
+        return self.put(url)
