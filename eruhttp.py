@@ -1,10 +1,11 @@
 import json
 import socket
-import requests
-import websocket
 import urllib
 import urlparse
 from urlparse import urljoin
+
+import requests
+import websocket
 
 
 class EruException(Exception):
@@ -29,20 +30,22 @@ class EruClient(object):
         self.password = password
         self.session = requests.Session()
 
-    def request(self, url, method='GET', params=None, data=None, expected_code=200):
-        headers = {'content-type': 'application/json'}
+    def request(self, url, method='GET', params=None, data=None, json=None, expected_code=200):
         if params is None:
             params = {}
         if data is None:
             data = {}
-        
+
         params.setdefault('start', 0)
         params.setdefault('limit', 20)
         target_url = urljoin(self.url, url)
         try:
-            resp = self.session.request(
-                method=method, url=target_url, params=params,
-                data=json.dumps(data), timeout=self.timeout, headers=headers)
+            resp = self.session.request(method=method,
+                                        url=target_url,
+                                        params=params,
+                                        data=data,
+                                        json=json,
+                                        timeout=self.timeout)
             r = resp.json()
             if resp.status_code != expected_code:
                 raise EruException(resp.status_code, r.get('error', 'Unknown error'))
@@ -74,17 +77,17 @@ class EruClient(object):
             except (websocket.WebSocketException, socket.error):
                 break
 
-    def post(self, url, params=None, data=None, expected_code=200):
-        return self.request(url, 'POST', params=params, data=data, expected_code=expected_code)
+    def post(self, url, **kwargs):
+        return self.request(url, 'POST', **kwargs)
 
-    def put(self, url, params=None, data=None, expected_code=200):
-        return self.request(url, 'PUT', params=params, data=data, expected_code=expected_code)
+    def put(self, url, **kwargs):
+        return self.request(url, 'PUT', **kwargs)
 
-    def get(self, url, params=None, data=None, expected_code=200):
-        return self.request(url, 'GET', params=params, data=data, expected_code=expected_code)
+    def get(self, url, **kwargs):
+        return self.request(url, 'GET', **kwargs)
 
-    def delete(self, url, params=None, data=None, expected_code=200):
-        return self.request(url, 'DELETE', params=params, data=data, expected_code=expected_code)
+    def delete(self, url, **kwargs):
+        return self.request(url, 'DELETE', **kwargs)
 
     def register_app_version(self, version, git, token, appyaml, raw=False):
         """Register an app into ERU.
@@ -97,15 +100,16 @@ class EruClient(object):
         :type appyaml: ``dict``
         """
         url = '/api/app/register/'
-        data = {
+        payload = {
             'version': version,
             'git': git,
             'token': token,
             'appyaml': appyaml,
         }
         if raw:
-            data['raw'] = True
-        return self.post(url, data=data, expected_code=201)
+            payload['raw'] = True
+
+        return self.post(url, json=payload, expected_code=201)
 
     def set_app_env(self, name, env, **kwargs):
         """Set environment key-value pair to app.
@@ -120,14 +124,14 @@ class EruClient(object):
         :param kwargs: the key-value pairs, like MYSQL_HOST=localhost, MYSQL_USER=user.
         """
         url = '/api/app/{0}/env/'.format(name)
-        data = {'env': env}
-        data.update(kwargs)
-        return self.put(url, data=data)
+        payload = {'env': env}
+        payload.update(kwargs)
+        return self.put(url, json=payload)
 
     def delete_app_env(self, name, env):
         url = '/api/app/{0}/env/'.format(name)
-        data = {'env': env}
-        return self.delete(url, data=data)
+        payload = {'env': env}
+        return self.delete(url, json=payload)
 
     def list_app_env_content(self, name, env):
         """List all key-value pairs from app with specific environment.
@@ -135,7 +139,7 @@ class EruClient(object):
 
             >>> eru_client.list_app_env_content('appname', 'prod')
             {'MYSQL_HOST': 'localhost', 'MYSQL_USER': 'user'}
-        
+
         :param name: the name of app.
         :param env: the name of environment.
         """
@@ -150,7 +154,7 @@ class EruClient(object):
 
             >>> eru_client.list_app_env_names('appname')
             {'r': 0, 'msg': 'ok', 'data': ['prod', 'test']}
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/listenv/'.format(name)
@@ -158,7 +162,7 @@ class EruClient(object):
 
     def get_app(self, name):
         """Get app from name.
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/'.format(name)
@@ -171,7 +175,7 @@ class EruClient(object):
 
     def get_version(self, name, version):
         """Get version by name and version.
-        
+
         :param name: the name of app.
         :param version: specific version of app, from git revision.
         """
@@ -180,7 +184,7 @@ class EruClient(object):
 
     def list_app_containers(self, name, start=0, limit=20):
         """List all containers of this app.
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/containers/'.format(name)
@@ -189,7 +193,7 @@ class EruClient(object):
 
     def list_app_tasks(self, name, start=0, limit=20):
         """List all containers of this app.
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/tasks/'.format(name)
@@ -198,7 +202,7 @@ class EruClient(object):
 
     def list_app_images(self, name, start=0, limit=20):
         """List all containers of this app.
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/images/'.format(name)
@@ -207,7 +211,7 @@ class EruClient(object):
 
     def list_version_tasks(self, name, version, start=0, limit=20):
         """List all containers of this app.
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/{1}/tasks/'.format(name, version)
@@ -216,7 +220,7 @@ class EruClient(object):
 
     def list_version_containers(self, name, version, start=0, limit=20):
         """List all containers of this app.
-        
+
         :param name: the name of app.
         """
         url = '/api/app/{0}/{1}/containers/'.format(name, version)
@@ -228,7 +232,7 @@ class EruClient(object):
             host_name=None, raw=False, image='', spec_ips=None, args=None,
             callback_url=''):
         """Deploy app on pod, using cores that are private.
-        
+
         e.g.::
 
             >>> eru_client.deploy_private('pod', 'appname', 1.4, \
@@ -258,7 +262,7 @@ class EruClient(object):
             args = []
 
         url = '/api/deploy/private/'
-        data = {
+        payload = {
             'podname': pod_name,
             'appname': app_name,
             'ncore': ncore,
@@ -272,13 +276,16 @@ class EruClient(object):
             'callback_url': callback_url,
         }
         if raw and image:
-            data['raw'] = True
-            data['image'] = image
+            payload['raw'] = True
+            payload['image'] = image
+
         if host_name:
-            data['hostname'] = host_name
+            payload['hostname'] = host_name
+
         if spec_ips:
-            data['spec_ips'] = spec_ips
-        return self.post(url, data=data)
+            payload['spec_ips'] = spec_ips
+
+        return self.post(url, json=payload)
 
     def deploy_public(self, pod_name, app_name, ncontainer,
             version, entrypoint, env, network_ids, ports=None,
@@ -293,7 +300,7 @@ class EruClient(object):
             args = []
 
         url = '/api/deploy/public/'
-        data = {
+        payload = {
             'podname': pod_name,
             'appname': app_name,
             'ncontainer': ncontainer,
@@ -306,11 +313,13 @@ class EruClient(object):
             'callback_url': callback_url,
         }
         if raw and image:
-            data['raw'] = True
-            data['image'] = image
+            payload['raw'] = True
+            payload['image'] = image
+
         if spec_ips:
-            data['spec_ips'] = spec_ips
-        return self.post(url, data=data)
+            payload['spec_ips'] = spec_ips
+
+        return self.post(url, json=payload)
 
     def build_image(self, pod_name, app_name, base, version):
         """Build docker image for app.
@@ -320,20 +329,20 @@ class EruClient(object):
             >>> eru_client.build_image('pod', 'appname', \
             ...     'docker-registry.intra.hunantv.com/nbeimage/ubuntu:python-2015.05.12', '3d4fe6a')
             {'r': 0, 'msg': 'ok', 'task': 10001, 'watch_key': 'eru:task:result:10001'}
-        
+
         :param pod_name: target pod name which containers will be deployed.
         :param app_name: the name of app.
         :param base: which image to use as base, will be like `FROM base` in dockerfile.
         :param version: specific version of app.
         """
         url = '/api/deploy/build/'
-        data = {
+        payload = {
             'podname': pod_name,
             'appname': app_name,
             'base': base,
             'version': version,
         }
-        return self.post(url, data=data)
+        return self.post(url, json=payload)
 
     def build_log(self, task_id):
         """Get build log for task_id. returns a generator"""
@@ -342,7 +351,7 @@ class EruClient(object):
 
     def container_log(self, container_id, stdout=0, stderr=0, tail=0):
         """Get container log. returns a generator.
-        
+
         :param container_id: container_id of container.
         :param stdout: if set, will get stdout logs.
         :param stderr: if set, will get stderr logs.
@@ -359,18 +368,18 @@ class EruClient(object):
     def offline_version(self, pod_name, app_name, version):
         """Offline specific version of app."""
         url = '/api/deploy/rmversion/'
-        data = {
+        payload = {
             'podname': pod_name,
             'appname': app_name,
             'version': version,
         }
-        return self.post(url, data=data)
+        return self.post(url, json=payload)
 
     def remove_containers(self, container_ids):
         """Remove all containers in `container_ids`"""
         url = '/api/deploy/rmcontainers/'
-        data = {'cids': container_ids}
-        return self.post(url, data=data)
+        payload = {'cids': container_ids}
+        return self.post(url, json=payload)
 
     def version(self):
         url = '/'
@@ -399,7 +408,7 @@ class EruClient(object):
     def poll_container(self, container_id):
         """Poll container status.
         status 1 means alive, otherwise dead.
-        
+
         e.g.::
 
             >>> eru_client.poll_container('b84fb25bd99b')
@@ -411,21 +420,21 @@ class EruClient(object):
     def create_pod(self, name, description):
         """Create pod"""
         url = '/api/pod/create/'
-        data = {
+        payload = {
             'name': name,
             'description': description,
         }
-        return self.post(url, data=data, expected_code=201)
+        return self.post(url, json=payload, expected_code=201)
 
     def create_host(self, addr, pod_name):
         """Create host.
-        host name and basic information will be got from docker info. 
+        host name and basic information will be got from docker info.
 
         e.g.::
 
             >>> eru_client.create_host('10.1.201.91:2376', 'pod')
             {'r': 0, 'msg': 'ok'}
-        
+
         """
         url = '/api/host/create/'
         data = {
@@ -437,11 +446,11 @@ class EruClient(object):
     def create_network(self, name, netspace):
         """Create macvlan network, netspace is like `10.200.0.0/16`"""
         url = '/api/network/create/'
-        data = {
+        payload = {
             'name': name,
             'netspace': netspace,
         }
-        return self.post(url, data=data, expected_code=201)
+        return self.post(url, json=payload, expected_code=201)
 
     def list_network(self, start=0, limit=20):
         """List all available networks"""
@@ -450,11 +459,11 @@ class EruClient(object):
 
     def bind_container_network(self, appname, container_id, network_names):
         url = '/api/container/%s/bind_network' % container_id
-        data = {
+        payload = {
             'appname': appname,
             'networks': network_names,
         }
-        return self.put(url, data=data)
+        return self.put(url, json=payload)
 
     def get_network(self, id_or_name):
         url = '/api/network/{0}/'.format(id_or_name)
@@ -485,12 +494,12 @@ class EruClient(object):
         return self.get('/api/host/{0}/'.format(host_name))
 
     def kill_host(self, host_name):
-        """Kill a host, will be shown as down in Eru 
+        """Kill a host, will be shown as down in Eru
         and containers on this host will be shown as dead."""
         return self.put('/api/host/{0}/down/'.format(host_name))
 
     def cure_host(self, host_name):
-        """Cure a host, will be shown as up in Eru 
+        """Cure a host, will be shown as up in Eru
         and containers on this host will be shown as alive."""
         return self.put('/api/host/{0}/cure/'.format(host_name))
 
@@ -505,12 +514,12 @@ class EruClient(object):
         return self.get('/api/task/{0}/log/'.format(task_id))
 
     def add_eip(self, *eips):
-        data = list(eips)
-        return self.post('/api/network/add_eip/', data=data, expected_code=201)
+        payload = list(eips)
+        return self.post('/api/network/add_eip/', json=payload, expected_code=201)
 
     def delete_eip(self, *eips):
-        data = list(eips)
-        return self.post('/api/network/delete_eip/', data=data)
+        payload = list(eips)
+        return self.post('/api/network/delete_eip/', json=payload)
 
     def bind_host_eip(self, hostname):
         url = '/api/host/{0}/eip/'.format(hostname)
@@ -526,8 +535,8 @@ class EruClient(object):
 
     def bind_container_eip(self, container_id, eip):
         url = '/api/container/{0}/bind_eip/'.format(container_id)
-        data = {'eip': eip}
-        return self.put(url, data=data)
+        payload = {'eip': eip}
+        return self.put(url, json=payload)
 
     def release_container_eip(self, container_id, eip):
         url = '/api/container/{0}/release_eip/'.format(container_id)
