@@ -1,4 +1,5 @@
 import json
+import os
 import socket
 import urllib
 import urlparse
@@ -30,7 +31,7 @@ class EruClient(object):
         self.password = password
         self.session = requests.Session()
 
-    def request(self, url, method='GET', params=None, data=None, json=None, expected_code=200):
+    def request(self, url, method='GET', params=None, data=None, json=None, files=None, expected_code=200):
         if params is None:
             params = {}
         if data is None:
@@ -45,6 +46,7 @@ class EruClient(object):
                                         params=params,
                                         data=data,
                                         json=json,
+                                        files=files,
                                         timeout=self.timeout)
             r = resp.json()
             if resp.status_code != expected_code:
@@ -426,9 +428,11 @@ class EruClient(object):
         }
         return self.post(url, json=payload, expected_code=201)
 
-    def create_host(self, addr, pod_name):
+    def create_host(self, addr, pod_name, is_public=False, docker_cert_path=''):
         """Create host.
         host name and basic information will be got from docker info.
+
+        :param docker_cert_path: str, path to docker certificate files
 
         e.g.::
 
@@ -440,8 +444,16 @@ class EruClient(object):
         data = {
             'addr': addr,
             'podname': pod_name,
+            'is_public': 1 if is_public else 0,
         }
-        return self.post(url, data=data, expected_code=201)
+        files = {}
+        if docker_cert_path:
+            for fname in ('ca.pem', 'cert.pem', 'key.pem'):
+                path = os.path.join(docker_cert_path, fname)
+                upload_file_name = fname.replace('.pem', '')
+                files.update({upload_file_name: open(path, 'rb')})
+
+        return self.post(url, data=data, files=files, expected_code=201)
 
     def create_network(self, name, netspace):
         """Create macvlan network, netspace is like `10.200.0.0/16`"""
