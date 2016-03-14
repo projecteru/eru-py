@@ -444,7 +444,8 @@ class EruClient(object):
         data = {
             'addr': addr,
             'podname': pod_name,
-            'is_public': 1 if is_public else 0,
+            # in order for bool in form-data to work with werkzeug, have to do this
+            'is_public': is_public if is_public else '',
         }
         files = {}
         if docker_cert_path:
