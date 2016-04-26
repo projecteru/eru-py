@@ -1,12 +1,16 @@
+# -*- coding: utf-8 -*-
 import json
 import os
 import socket
 import urllib
 import urlparse
+from collections import defaultdict
 from urlparse import urljoin
 
 import requests
+import six
 import websocket
+from netaddr import IPNetwork, IPAddress
 
 
 class EruException(Exception):
@@ -229,10 +233,10 @@ class EruClient(object):
         params = {'start': start, 'limit': limit}
         return self.get(url, params=params)
 
-    def deploy_private(self, pod_name, app_name, ncore,
-            ncontainer, version, entrypoint, env, network_ids, ports=None,
-            host_name=None, raw=False, image='', spec_ips=None, args=None,
-            callback_url=''):
+    def deploy_private(self, pod_name, app_name, ncore, ncontainer, version,
+                       entrypoint, env, network_ids, ports=None,
+                       host_name=None, raw=False, image='', spec_ips=None,
+                       args=None, callback_url=''):
         """Deploy app on pod, using cores that are private.
 
         e.g.::
@@ -290,8 +294,8 @@ class EruClient(object):
         return self.post(url, json=payload)
 
     def deploy_public(self, pod_name, app_name, ncontainer,
-            version, entrypoint, env, network_ids, ports=None,
-            raw=False, image='', spec_ips=None, args=None, callback_url=''):
+                      version, entrypoint, env, network_ids, ports=None,
+                      raw=False, image='', spec_ips=None, args=None, callback_url=''):
         """Deploy app on pod, can't bind any cores to container."""
         if raw and not image:
             raise EruException('raw and image must be set together.')
@@ -554,3 +558,65 @@ class EruClient(object):
     def release_container_eip(self, container_id, eip):
         url = '/api/container/{0}/release_eip/'.format(container_id)
         return self.put(url)
+
+    def scale_out(self, pod_name, app_name, ncore, ncontainer, entrypoints=()):
+        """only scale specified entrypoints, if provided"""
+        containers = self.list_app_containers(app_name, start=0, limit=100)
+        if entrypoints:
+            containers = [c for c in containers if c['entrypoint'] in entrypoints]
+
+        container_group = {}
+        # 理论上同样版本同样入口同样环境的容器应该都相同
+        for c in containers:
+            if c['in_removal']:
+                continue
+            container_group[(c['version'], c['entrypoint'], c['env'])] = c
+
+        report = []
+        for (version, entrypoint, env), container in container_group.iteritems():
+            networks = []
+            for n in container['networks']:
+                net = IPNetwork(n['vlan_address'])
+                ip = str(IPAddress(net.first))
+                networks.append(ip)
+
+            success = self.deploy_private(pod_name,
+                                          app_name,
+                                          ncore,
+                                          ncontainer,
+                                          version,
+                                          entrypoint,
+                                          env,
+                                          networks)
+            report.append(success)
+
+        if not all(report):
+            raise EruException(500, 'error during scaling, go check karazhan')
+        return report
+
+    def scale_in(self, app_name, ncontainer, pod_names=None, entrypoints=()):
+        """in rare conditions, app are deploy across different pods, specify pods to kill"""
+        containers = self.list_app_containers(app_name, start=0, limit=100)
+        if entrypoints:
+            containers = [c for c in containers if c['entrypoint'] in entrypoints]
+
+        pod_names = [pod_names] if isinstance(pod_names, six.string_types) else pod_names
+        if pod_names:
+            containers = [c for c in containers if c['entrypoint'] in entrypoints]
+
+        container_group = defaultdict(list)
+        for c in containers:
+            key = c['version'], c['entrypoint'], c['env']
+            container_group[key].append(c)
+
+        to_remove = []
+        for (version, entrypoint, env), containers in container_group.iteritems():
+            current_ncontainer = len(containers)
+            if current_ncontainer <= 1 or current_ncontainer <= ncontainer:
+                # there's nothing to scale in
+                continue
+            # kill the most `ncontainer` eldest containers
+            eldest_containers = sorted(containers, key=lambda d: d['created'])[:ncontainer]
+            to_remove.extend([c['container_id'] for c in eldest_containers])
+
+        return self.remove_containers(to_remove)

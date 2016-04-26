@@ -4,3 +4,5 @@ erucli.egg-info/*
 build/*
 dist/*
 .ropeproject
+*.ipynb
+.ipynb_checkpoints/
