@@ -4,7 +4,7 @@ import os
 import socket
 import urllib
 import urlparse
-from collections import defaultdict
+from collections import defaultdict, Counter
 from urlparse import urljoin
 
 import requests
@@ -559,8 +559,14 @@ class EruClient(object):
         url = '/api/container/{0}/release_eip/'.format(container_id)
         return self.put(url)
 
-    def scale_out(self, pod_name, app_name, ncore, ncontainer, entrypoints=()):
-        """only scale specified entrypoints, if provided"""
+    def scale_out(self, app_name, ncore, ncontainer, pod_name=None, entrypoints=()):
+        """
+        :param app_name: str, eru app name
+        :param ncore: int
+        :param ncontainer: int
+        :param pod_name: str, if not specified, use the pod in which the most container lives
+        :param entrypoints: tuple, if specified, only scale these entrypoints
+        """
         containers = self.list_app_containers(app_name, start=0, limit=100)
         if entrypoints:
             containers = [c for c in containers if c['entrypoint'] in entrypoints]
@@ -571,6 +577,11 @@ class EruClient(object):
             if c['in_removal']:
                 continue
             container_group[(c['version'], c['entrypoint'], c['env'])] = c
+
+        if not pod_name:
+            # pick the pod that occurs the most, and scale only within that pod
+            counter = Counter([c['podname'] for c in containers])
+            pod_name = counter.most_common()[0][0]
 
         report = []
         for (version, entrypoint, env), container in container_group.iteritems():
