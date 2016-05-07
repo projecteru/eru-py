@@ -587,10 +587,8 @@ class EruClient(object):
             pod_name = counter.most_common()[0][0]
 
         def calculate_ncontainer(current_ncontainer, ncontainer, ceiling):
-            if ncontainer:
-                will_reach_ncontainer = current_ncontainer + ncontainer
-            else:
-                will_reach_ncontainer = current_ncontainer * 2
+            ncontainer = ncontainer if ncontainer else current_ncontainer
+            will_reach_ncontainer = current_ncontainer + ncontainer
 
             if will_reach_ncontainer <= ceiling:
                 should_add = ncontainer
@@ -598,7 +596,7 @@ class EruClient(object):
                 should_add = ceiling - current_ncontainer
 
             if should_add < 1:
-                raise EruException(500, 'current_ncontainer={}, reached ceiling {}'.format(current_ncontainer, ceiling))
+                raise EruException(500, 'current_ncontainer={} will scale by {}, reached ceiling {}'.format(current_ncontainer, should_add, ceiling))
 
             return should_add
 
@@ -629,6 +627,7 @@ class EruClient(object):
 
         if not all(report):
             raise EruException(500, 'error during scaling, go check karazhan')
+        # TODO: should be able to infer task success from return value
         return report
 
     def scale_in(self, app_name, ncontainer, pod_names=None, entrypoints=(), floor=2):
