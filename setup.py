@@ -12,6 +12,9 @@ setup(
     include_package_data=True,
     install_requires=[
         'requests>=2.7.0',
-        'websocket-client>=0.30.0',
+        'netaddr == 0.7.18'
+        'setuptools == 18.0.1'
+        'six == 1.9.0'
+        'websocket_client == 0.37.0'
     ],
 )
