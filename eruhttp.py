@@ -61,7 +61,9 @@ class EruClient(object):
         except requests.exceptions.ConnectionError:
             raise EruException(0, 'Connection refused')
         except Exception as e:
-            raise EruException(0, e.message)
+            err_msg = '''{url} responded: {msg}\n{params}\n{data}\n{json}'''.format(
+                url=url, msg=e.message, params=params, data=data, json=json)
+            raise EruException(0, err_msg)
 
     def request_websocket(self, url, as_json=True, params=None):
         # .......
